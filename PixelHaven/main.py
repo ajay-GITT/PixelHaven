@@ -284,7 +284,7 @@ while running:
             zomb_x.append(850 + i * 100)
             zomb_y.append(443)
             zomb_lives.append(3)
-
+#
         screen.blit(starting, (0, 0))
         screen.blit(play_button, (250, 150))
         starting = pygame.transform.scale(starting, (width, height))
