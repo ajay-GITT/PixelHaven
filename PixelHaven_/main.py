@@ -8,7 +8,7 @@ import random
 from pygame.constants import MOUSEBUTTONDOWN
 
 width, height = 800, 600
-pygame.display.set_caption("PixelHaven: Realms of Wonders")
+pygame.display.set_caption("PixelHaven_: Realms of Wonders")
 pygame.init()
 screen = pygame.display.set_mode((width, height))
 clock = pygame.time.Clock()
