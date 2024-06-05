@@ -309,6 +309,7 @@ while running:
         collision()
         zombies()
         bound()
+        #
         if start_jump:
             jumping()
         img_rect5 = check_button2.get_rect(center=(1000, 1000))
