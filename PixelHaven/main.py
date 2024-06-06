@@ -30,7 +30,6 @@ exit_button = pygame.transform.scale(exit_button, (300, 150))
 # Settings Button
 settings_button = pygame.image.load("settings_button.png")
 settings_button = pygame.transform.scale(settings_button, (85, 85))
-zomb_lives = 3
 # Pause Menu
 pause_menu = pygame.image.load("pause_menu.png")
 pause_menu = pygame.transform.scale(pause_menu, (550, 575))
@@ -96,8 +95,11 @@ spr_x = 100
 spr_y = 418
 bg_move = 0
 bg_move2 = 0
+# Flags
 start_jump = False
 can_go_up = True
+hit_left_border = False
+hit_right_border = False
 # Rectangles around images
 img_rect = play_button.get_rect(center=(425, 240))
 img_rect2 = exit_button.get_rect(center=(400, 350))
@@ -119,6 +121,7 @@ zomb_mask = pygame.mask.from_surface(zombie_idle_l)
 cave_monster_mask = pygame.mask.from_surface(cave_monster)
 
 # Functions
+
 
 def jumping():
     global spr_y, start_jump, can_go_up
@@ -152,17 +155,21 @@ def jumping():
 
 
 def key_inputs():
-    global spr_x, spr_y, bg_move, start_jump, can_go_up, bg_move2, lives
+    global spr_x, spr_y, bg_move, start_jump, can_go_up, bg_move2, lives, hit_left_border, hit_right_border
     if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
         spr_x -= 0.8
         screen.blit(spr_walk_l, (spr_x, spr_y - 3))
         bg_move = bg_move + 1.7
         bg_move2 = bg_move2 + 1.7
+        if hit_right_border:
+            hit_right_border = False
     elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
         spr_x += 0.8
         screen.blit(spr_walk_r, (spr_x, spr_y - 3))
         bg_move = bg_move - 1.7
         bg_move2 = bg_move2 - 1.7
+        if hit_left_border:
+            hit_left_border = False
     elif event.type == pygame.KEYDOWN and event.key == pygame.K_UP and not start_jump:
         start_jump = True
         can_go_up = True
@@ -181,21 +188,34 @@ def key_inputs():
             screen.blit(spr_block_r, (spr_x, spr_y - 10))
             pygame.draw.rect(screen, (255,0,0), img_rect_spr_block, 2)
             for i in range(len(zomb_x)):
-                if img_rect_spr_block.colliderect(pygame.Rect(zomb_x[i], zomb_y[i], 70, 50)):
+                if img_rect_spr_block.colliderect(pygame.Rect(zomb_x[i], zomb_y[i], 70, 50)) and zomb_lives[i] > 0:
                     spr_x -= 100
                     bg_move += 100
     else:
         screen.blit(spr_idle_r, (spr_x, spr_y))
 
+
 def zombies():
-    for i in range(len(zomb_x)):
-        if zomb_lives[i] > 0:
-            screen.blit(zombie_idle_l, (zomb_x[i], zomb_y[i]))
-            zomb_x[i] -= 1.2
-    if game_state == "Level_2":
+    if game_state == "Playing":
+        for i in range(len(zomb_x)):
+            if zomb_lives[i] > 0:
+                screen.blit(zombie_idle_l, (zomb_x[i], zomb_y[i]))
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT and not hit_left_border and not hit_right_border:
+                    zomb_x[i] += 0.5
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT and not hit_left_border and not hit_right_border:
+                    zomb_x[i] -= 2.9
+                else:
+                    zomb_x[i] -= 1.2
+    elif game_state == "Level_2":
         for i in range(len(zomb_x)):
             if zomb_lives[i] > 0:
                 screen.blit(cave_monster, (zomb_x[i], zomb_y[i]))
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT and not hit_left_border and not hit_right_border:
+                    zomb_x[i] += 0.5
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT and not hit_left_border and not hit_right_border:
+                    zomb_x[i] -= 2.9
+                else:
+                    zomb_x[i] -= 1.2
 
 
 def collision():
@@ -217,8 +237,14 @@ def collision():
         screen.blit(blood, (-175, -50))
         screen.blit(blood, (650, 400))
     if spr_x > 440 and game_state == "Playing":
-        screen.blit(portal, (550,385))
+        screen.blit(portal, (550, 385))
         pygame.draw.rect(screen, (255, 0, 0), img_rect_portal, 2)
+
+
+def reset_zombie_lives():
+    global zomb_lives
+    for i in range(len(zomb_lives)):
+        zomb_lives[i] = 3
 
 
 def hearts(screen, x, y, lives):
@@ -230,16 +256,25 @@ def hearts(screen, x, y, lives):
 
 
 def bound():
-    global spr_x, bg_move
+    global spr_x, bg_move, bg_move2, hit_left_border, hit_right_border
     if game_state == "Playing":
         if spr_x < 105:
             spr_x = 110
             bg_move = -3.6
+            hit_left_border = True
         if spr_x > 600:
             spr_x = 595
             bg_move = -695
+            hit_right_border = True
     elif game_state == "Level_2":
-        pass
+        if spr_x < 107:
+            spr_x = 108
+            bg_move2 = -17
+            hit_left_border = True
+        elif spr_x > 472:
+            spr_x = 470
+            bg_move2 = -773
+            hit_right_border = True
 
 
 # Game Loop
@@ -278,7 +313,6 @@ while running:
         bg_move = 0
         bg_move2 = 0
         num_zombies = random.randint(2, 5)
-        num_zombies = random.randint(2, 5)
         zomb_x = []
         zomb_y = []
         zomb_lives = []
@@ -300,12 +334,15 @@ while running:
         img_rect4 = check_button.get_rect(center=(400, 415))
         img_rect5 = check_button2.get_rect(center=(400, 430))
     elif game_state == "Playing":
-        # game_state = "Level_2"
         img_rect_portal = portal.get_rect(center = (625, 500))
         img_rect_spr_idle = spr_idle_r.get_rect(center = (spr_x, spr_y))
         if img_rect_portal.colliderect(img_rect_spr_idle):
             game_state = "Level_2"
-            spr_x = -200
+            for i in range(len(zomb_x)):
+                zomb_x[i] = 800 + i * 100
+            spr_x = 108
+            bg_move2 = -17
+            reset_zombie_lives()
         screen.blit(lvl1_bk, (bg_move, 0))
         screen.blit(lvl1_bk, (width + bg_move, 0))
         hearts(screen, 0, 5, lives)
@@ -313,7 +350,6 @@ while running:
         collision()
         zombies()
         bound()
-        #
         if start_jump:
             jumping()
         img_rect5 = check_button2.get_rect(center=(1000, 1000))
@@ -363,10 +399,10 @@ while running:
         key_inputs()
         collision()
         zombies()
-        # bound()
+        bound()
     if start_jump:
         jumping()
-    print(spr_x, bg_move)
+    print(spr_x, bg_move, zomb_lives)
     pygame.display.update()
     clock.tick(60)
 
