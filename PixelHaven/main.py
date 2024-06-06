@@ -8,7 +8,7 @@ import random
 from pygame.constants import MOUSEBUTTONDOWN
 
 width, height = 800, 600
-pygame.display.set_caption("PixelHaven_: Realms of Wonders")
+pygame.display.set_caption("PixelHaven: Realms of Wonders")
 pygame.init()
 screen = pygame.display.set_mode((width, height))
 clock = pygame.time.Clock()
@@ -231,12 +231,15 @@ def hearts(screen, x, y, lives):
 
 def bound():
     global spr_x, bg_move
-    if spr_x < 105:
-        spr_x = 110
-        bg_move = -3.6
-    if spr_x > 300:
-        spr_x = 295
-        bg_move = 3.6
+    if game_state == "Playing":
+        if spr_x < 105:
+            spr_x = 110
+            bg_move = -3.6
+        if spr_x > 600:
+            spr_x = 595
+            bg_move = -695
+    elif game_state == "Level_2":
+        pass
 
 
 # Game Loop
@@ -302,6 +305,7 @@ while running:
         img_rect_spr_idle = spr_idle_r.get_rect(center = (spr_x, spr_y))
         if img_rect_portal.colliderect(img_rect_spr_idle):
             game_state = "Level_2"
+            spr_x = -200
         screen.blit(lvl1_bk, (bg_move, 0))
         screen.blit(lvl1_bk, (width + bg_move, 0))
         hearts(screen, 0, 5, lives)
@@ -353,7 +357,6 @@ while running:
         img_rect9 = settings_pause.get_rect(center=(393, 250))
         img_rect10 = quit_pause.get_rect(center=(393, 150))
     elif game_state == "Level_2":
-        spr_x = 100
         screen.blit(lvl2_bk, (bg_move2, 0))
         screen.blit(lvl2_bk, (width + bg_move2, 0))
         hearts(screen, 0, 5, lives)
@@ -363,11 +366,11 @@ while running:
         # bound()
     if start_jump:
         jumping()
-    print(spr_x, game_state)
+    print(spr_x, bg_move)
     pygame.display.update()
     clock.tick(60)
 
-# Fix bound 
+# Fix bound
 # add boss
 # Add level 2-5
 # Fix level 2 starting position
