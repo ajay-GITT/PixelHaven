@@ -14,7 +14,6 @@ screen = pygame.display.set_mode((width, height))
 clock = pygame.time.Clock()
 game_state = "Main"
 starting = pygame.image.load("starting.png")
-lives = 3
 # HP
 hp = pygame.image.load("hp.png")
 hp = pygame.transform.scale(hp, (50, 50))
@@ -90,12 +89,14 @@ yes_button = pygame.image.load("yes_button.png")
 yes_button = pygame.transform.scale(yes_button, (150, 160))
 no_button = pygame.image.load("no_button.png")
 no_button = pygame.transform.scale(no_button, (150, 160))
+# Lives
+lives = 3
 # Pos
 spr_x = 100
 spr_y = 418
 bg_move = 0
 bg_move2 = 0
-portal_x = 550
+portal_x = 0
 # Flags
 start_jump = False
 can_go_up = True
@@ -115,7 +116,7 @@ img_rect9 = settings_pause.get_rect(center=(393, 250))
 img_rect10 = quit_pause.get_rect(center=(393, 150))
 portal = pygame.image.load("portal.png")
 portal = pygame.transform.scale(portal, (125, 125))
-img_rect_portal = portal.get_rect(center=(625, 500))
+img_rect_portal = portal.get_rect(center=(portal_x + 75, 500))
 img_rect_spr_idle = spr_idle_r.get_rect(center=(spr_x + 100, spr_y))
 # Rectangles around sprites
 spr_mask = pygame.mask.from_surface(spr_idle_r)
@@ -126,16 +127,10 @@ PLAYER_SPEED = 0.8
 BG_SPEED = 1.7
 ZOMB_SPEED = 1.2
 BOSS_1_SPEED = 0.3
-
 # Boss
-'''
-Old Version:
 boss_lvl1 = pygame.image.load("final_boss_monster.png")
 boss_lvl1 = pygame.transform.scale(boss_lvl1, (350, 350))
-boss_lvl1_l = pygame.transform.flip(boss_lvl1, True, False)
-'''
-boss_lvl1 = pygame.transform.flip(pygame.transform.scale(pygame.image.load("final_boss_monster.png"), (350, 350)),
-                                  True, False)
+boss_lvl1 = pygame.transform.flip(boss_lvl1, True, False)
 boss_x = 800
 boss_hp = 30
 
@@ -173,11 +168,12 @@ def jumping():
 
 
 def update_portal_x():
-    global portal_x
-    # if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT and not hit_left_border:
-    #     portal_x += BG_SPEED
-    # elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-    #     portal_x -= BG_SPEED
+    global portal_x, img_rect_portal
+    if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT and not hit_left_border:
+        portal_x += BG_SPEED
+    elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
+        portal_x -= BG_SPEED
+    img_rect_portal = portal.get_rect(center=(portal_x + 75, 500))
 
 
 def key_inputs():
@@ -199,16 +195,17 @@ def key_inputs():
                 zomb_lives[i] -= 1
                 zomb_x[i] += 35
         screen.blit(spr_attack_r, (spr_x, spr_y - 6))
-        # img_rect_spr_atk = pygame.Rect(spr_x + 20, spr_y + 20, 70, 50)
-        # img_rect_boss_1 = boss_lvl1_l.get_rect(center=(boss_x + 215, 374))
-        # if img_rect_spr_atk.colliderect(img_rect_boss_1):
-        #     boss_hp -= 1
-        #     boss_x += 10
+
+        # Deal damage to the boss:
+        img_rect_spr_atk = pygame.Rect(spr_x + 20, spr_y + 20, 70, 50)
+        img_rect_boss_1 = boss_lvl1.get_rect(center=(boss_x + 215, 374))
+        if img_rect_spr_atk.colliderect(img_rect_boss_1):
+            boss_hp -= 1
+            boss_x += 10
     elif right_click:
         interacting = True
         img_rect_spr_block = pygame.Rect(spr_x + 20, spr_y + 20, 70, 50)
         screen.blit(spr_block_r, (spr_x, spr_y - 10))
-        pygame.draw.rect(screen, (255, 0, 0), img_rect_spr_block, 2)
         for i in range(len(zomb_x)):
             if img_rect_spr_block.colliderect(pygame.Rect(zomb_x[i], zomb_y[i], 70, 50)) and zomb_lives[i] > 0:
                 spr_x -= 100
@@ -275,10 +272,8 @@ def boss_1():
     if zomb_lives[i] <= 0 and boss_hp > 0:
         boss_x -= BOSS_1_SPEED  # for constant boss movement
 
-        print(spr_x)
-        # screen.blit(boss_lvl1, (boss_x, 174))
-        # img_rect_boss_1 = boss_lvl1.get_rect(center=(boss_x + 215, 374))
-        # pygame.draw.rect(screen, (255, 0, 0), img_rect_boss_1, 2)
+        screen.blit(boss_lvl1, (boss_x, 174))
+        img_rect_boss_1 = boss_lvl1.get_rect(center=(boss_x + 215, 374))
 
         # Handling Player-Relative Movement:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT and not hit_left_border and not hit_right_border:
@@ -290,7 +285,7 @@ def boss_1():
 
 
 def collision():
-    global lives, spr_x, game_state, bg_move, boss_x
+    global lives, spr_x, game_state, bg_move
 
     if zomb_lives[-1] > 0:  # Last zombie life > 0, [-1] checks first element from the right side (the last element)
         # Entering this branch means the rightmost zombie is dead, and the rightmost zombie will always die last.
@@ -304,7 +299,11 @@ def collision():
     if boss_hp > 0:
         img_rect_boss_1 = boss_lvl1.get_rect(center=(boss_x + 215, 374))
         if img_rect_spr_idle.colliderect(img_rect_boss_1):
-            boss_x += 165
+            spr_x -= 165
+            if not blocking:
+                lives -= 2
+            else:
+                lives -= 1
 
 
         # Handling collision with final boss:
@@ -316,10 +315,10 @@ def collision():
     elif lives == 1:
         screen.blit(blood, (-175, -50))
         screen.blit(blood, (650, 400))
-    if spr_x > 440 and game_state == "Playing":
-        screen.blit(portal, (portal_x, 385))
-        print(11111)
-        pygame.draw.rect(screen, (255, 0, 0), img_rect_portal, 2)
+
+    if game_state == "Playing" and boss_hp <= 0:
+        if spr_x > 440 or spr_x - portal_x <= 440:
+            screen.blit(portal, (portal_x, 385))
 
 
 def reset_zombie_lives():
@@ -330,7 +329,6 @@ def reset_zombie_lives():
 
 def hearts(screen, x, y, lives):
     for i in range(lives):
-        print(f'lives: {lives}')
         hp_rect = hp.get_rect()
         hp_rect.x = x + 40 * i
         hp_rect.y = y
@@ -390,10 +388,18 @@ while running:
                 game_state = "Playing"
     # Game states
     if game_state == "Main":
+        start_jump = False
+        can_go_up = True
+        hit_left_border = False
+        hit_right_border = False
+        blocking = False
         lives = 3
         spr_x = 100
-        bg_move = 0
+        boss_x = 800
+        boss_hp = 30
+        bg_move = -25
         bg_move2 = 0
+        portal_x = 1400
         num_zombies = random.randint(2, 5)
         zomb_x = []
         zomb_y = []
@@ -415,8 +421,7 @@ while running:
         img_rect4 = check_button.get_rect(center=(400, 415))
         img_rect5 = check_button2.get_rect(center=(400, 430))
     elif game_state == "Playing":
-        update_portal_x()
-        img_rect_portal = portal.get_rect(center=(625, 500))
+        img_rect_portal = portal.get_rect(center=(portal_x + 75, 500))
         img_rect_spr_idle = spr_idle_r.get_rect(center=(spr_x, spr_y))
         if img_rect_spr_idle.colliderect(img_rect_portal):
             game_state = "Level_2"
@@ -429,6 +434,7 @@ while running:
         screen.blit(lvl1_bk, (width + bg_move, 0))
         hearts(screen, 0, 5, lives)
         key_inputs()
+        update_portal_x()
         collision()
         zombies()
         boss_1()
@@ -485,7 +491,6 @@ while running:
         bound()
     if start_jump:
         jumping()
-    # print(spr_x, bg_move, zomb_lives)
     pygame.display.update()
     clock.tick(60)
 
