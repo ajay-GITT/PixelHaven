@@ -134,7 +134,6 @@ boss_lvl1 = pygame.transform.flip(boss_lvl1, True, False)
 boss_x = 800
 boss_hp = 30
 
-
 # Functions
 def jumping():
     global spr_y, start_jump, can_go_up
