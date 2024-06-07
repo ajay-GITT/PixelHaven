@@ -315,9 +315,8 @@ def collision():
         screen.blit(blood, (-175, -50))
         screen.blit(blood, (650, 400))
 
-    if game_state == "Playing" and boss_hp <= 0:
-        if spr_x > 440 or spr_x - portal_x <= 440:
-            screen.blit(portal, (portal_x, 385))
+    if game_state == "Playing" and boss_hp <= 0 and spr_x - portal_x <= 440:
+        screen.blit(portal, (portal_x, 385))
 
 
 def reset_zombie_lives():
