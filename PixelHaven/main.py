@@ -103,6 +103,7 @@ can_go_up = True
 hit_left_border = False
 hit_right_border = False
 blocking = False
+can_spawn_fireball = True
 # Rectangles around images
 img_rect = play_button.get_rect(center=(425, 240))
 img_rect2 = exit_button.get_rect(center=(400, 350))
@@ -117,22 +118,41 @@ img_rect10 = quit_pause.get_rect(center=(393, 150))
 portal = pygame.image.load("portal.png")
 portal = pygame.transform.scale(portal, (125, 125))
 img_rect_portal = portal.get_rect(center=(portal_x + 75, 500))
-img_rect_spr_idle = spr_idle_r.get_rect(center=(spr_x + 100, spr_y))
+img_rect_spr_idle = spr_idle_r.get_rect(center=(spr_x + 200, spr_y))
 # Rectangles around sprites
 spr_mask = pygame.mask.from_surface(spr_idle_r)
 zomb_mask = pygame.mask.from_surface(zombie_idle_l)
 cave_monster_mask = pygame.mask.from_surface(cave_monster)
-# Constants
-PLAYER_SPEED = 0.8
-BG_SPEED = 1.7
-ZOMB_SPEED = 1.2
-BOSS_1_SPEED = 0.3
 # Boss
 boss_lvl1 = pygame.image.load("final_boss_monster.png")
 boss_lvl1 = pygame.transform.scale(boss_lvl1, (350, 350))
 boss_lvl1 = pygame.transform.flip(boss_lvl1, True, False)
 boss_x = 800
 boss_hp = 30
+# Boss Fireball
+falling_fireball = pygame.image.load("falling_fireball.png")
+falling_fireball = pygame.transform.scale(falling_fireball, (125, 125))
+img_rect_fireball = None
+num_of_fireballs = random.randint(5, 15)
+fireballs_x = []
+fireballs_y = []
+fireballs_hitbox = []
+# Constants
+PLAYER_SPEED = 0.8
+BG_SPEED = 1.7
+ZOMB_SPEED = 1.2
+BOSS_1_SPEED = 0.3
+FIREBALL_RADIUS = 250
+FIREBALL_Y_SPAWN = -125
+SWING_DURATION = 5
+# Fill fireball coordinate lists:
+for fireball in range(num_of_fireballs):
+    fireballs_x.append(300)  # default values
+    fireballs_y.append(FIREBALL_Y_SPAWN)
+    fireballs_hitbox.append(None)  # predetermine number of hitboxes (these will be later replaced with real hitbox rectangles)
+# Misc.
+swing_timer = SWING_DURATION
+
 
 # Functions
 def jumping():
@@ -176,7 +196,7 @@ def update_portal_x():
 
 
 def key_inputs():
-    global spr_x, spr_y, bg_move, start_jump, can_go_up, bg_move2, lives, hit_left_border, hit_right_border, blocking
+    global spr_x, spr_y, bg_move, start_jump, can_go_up, bg_move2, lives, hit_left_border, hit_right_border, blocking, swing_timer
     left_click = pygame.mouse.get_pressed()[0]
     right_click = pygame.mouse.get_pressed()[2]
 
@@ -185,7 +205,7 @@ def key_inputs():
     blocking = right_click
 
     # Handling Attacking and Blocking:
-    if left_click:
+    if left_click and swing_timer > 0:
         global boss_hp, boss_x
         interacting = True
         img_rect_spr_atk = pygame.Rect(spr_x + 20, spr_y + 20, 70, 50)
@@ -201,6 +221,9 @@ def key_inputs():
         if img_rect_spr_atk.colliderect(img_rect_boss_1):
             boss_hp -= 1
             boss_x += 10
+
+        # Decrement the swing timer:
+        swing_timer -= 1
     elif right_click:
         interacting = True
         img_rect_spr_block = pygame.Rect(spr_x + 20, spr_y + 20, 70, 50)
@@ -240,6 +263,10 @@ def key_inputs():
     if not moving and not interacting:
         screen.blit(spr_idle_r, (spr_x, spr_y))
 
+    # Reset swing timer:
+    if not left_click:
+        swing_timer = SWING_DURATION
+
 
 def zombies():
     if game_state == "Playing":
@@ -267,7 +294,9 @@ def zombies():
 
 
 def boss_1():
-    global boss_x, spr_x
+    global boss_x, spr_x, can_spawn_fireball
+
+    # Updates boss movement, rendering, and relative position to player
     if zomb_lives[i] <= 0 and boss_hp > 0:
         boss_x -= BOSS_1_SPEED  # for constant boss movement
 
@@ -282,10 +311,54 @@ def boss_1():
         else:
             boss_x -= BOSS_1_SPEED
 
+    # Fireballs to be reset after hitting the ground:
+    if fireballs_y[0] > 350 and can_spawn_fireball == False:  # access and check the y-level of the first fireball (they all share the same y-coords anyway)
+        can_spawn_fireball = True
+    # Use Fireballs at a Certain HP Value:
+    elif 0 < boss_hp <= 25:  # 0 exclusive as the fireballs should disappear when the boss is defeated
+        run_fireballs()
+
+
+def run_fireballs():
+    global fireballs_x, fireballs_y, fireballs_hitbox, can_spawn_fireball, img_rect_fireball
+
+    # RESETTING THE FIREBALL:
+    # Determine random x-positions for all fireballs
+    if can_spawn_fireball:
+        for fireball_num in range(len(fireballs_x)):
+            spawn_x_pos = random.randint(int(spr_x - 2 * FIREBALL_RADIUS), int(spr_x + 0.5 * FIREBALL_RADIUS))  # to determine a random spawn x-position near the player
+            fireballs_x[fireball_num] = spawn_x_pos  # to leverage the randomly generated spawn x-positions near <spr_x>
+            fireballs_y[fireball_num] = FIREBALL_Y_SPAWN
+        can_spawn_fireball = False
+
+    # Spawn all fireballs at once
+    for fireball_num in range(len(fireballs_x)):
+        # Reference fireball coordinates
+        fb_x = fireballs_x[fireball_num]  # accesses the x-coord. for this specific fireball number
+        fb_y = fireballs_y[fireball_num]  # vice versa for the y-coord.
+
+        # Create hitbox
+        img_rect_fireball = pygame.Rect(fb_x + 30, fb_y + 10, 100, 100)
+        fireballs_hitbox[fireball_num] = img_rect_fireball
+
+        # pygame.draw.rect(screen, (255, 0, 0), img_rect_fireball, 2)  # to visualize the hitbox (temp.)
+        # Render fireball to the display
+        screen.blit(falling_fireball, (fb_x, fb_y))
+
+        # Adjust y-position
+        fireballs_y[fireball_num] += 2  # to make the fireball move down
+
+        # Adjust (relative to player) x-position
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT and not hit_left_border and not hit_right_border:
+            fireballs_x[fireball_num] += BG_SPEED
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT and not hit_left_border and not hit_right_border:
+            fireballs_x[fireball_num] -= BG_SPEED
+
 
 def collision():
-    global lives, spr_x, game_state, bg_move
-
+    global lives, spr_x, spr_y, game_state, bg_move, img_rect_fireball, fireballs_hitbox
+    img_rect_spr_atk = pygame.Rect(spr_x + 20, spr_y + 20, 70, 50)
+    img_rect_spr_block = pygame.Rect(spr_x + 20, spr_y + 20, 70, 50)
     if zomb_lives[-1] > 0:  # Last zombie life > 0, [-1] checks first element from the right side (the last element)
         # Entering this branch means the rightmost zombie is dead, and the rightmost zombie will always die last.
         for i in range(len(zomb_x)):
@@ -303,6 +376,11 @@ def collision():
                 lives -= 2
             else:
                 lives -= 1
+
+    if boss_hp <= 25:  # meaning the boss has been damaged enough to spawn fireballs
+        for hitbox in fireballs_hitbox:
+            if hitbox.colliderect(img_rect_spr_idle or img_rect_spr_atk or img_rect_spr_block):
+                lives -= 3  # instant loss due to contact with fire
 
 
         # Handling collision with final boss:
@@ -350,6 +428,7 @@ def bound():
             bg_move2 = -17
             hit_left_border = True
         elif spr_x > 472:
+            print(spr_x, bg_move2)
             spr_x = 470
             bg_move2 = -773
             hit_right_border = True
@@ -420,7 +499,7 @@ while running:
         img_rect5 = check_button2.get_rect(center=(400, 430))
     elif game_state == "Playing":
         img_rect_portal = portal.get_rect(center=(portal_x + 75, 500))
-        img_rect_spr_idle = spr_idle_r.get_rect(center=(spr_x, spr_y))
+        img_rect_spr_idle = pygame.Rect(spr_x + 20, spr_y + 10, 50, 100)
         if img_rect_spr_idle.colliderect(img_rect_portal):
             game_state = "Level_2"
             for i in range(len(zomb_x)):
@@ -428,14 +507,16 @@ while running:
             spr_x = 108
             bg_move2 = -17
             reset_zombie_lives()
+        # Level Background:
         screen.blit(lvl1_bk, (bg_move, 0))
         screen.blit(lvl1_bk, (width + bg_move, 0))
+        # pygame.draw.rect(screen, (255, 0, 0), img_rect_spr_idle, 2)
         hearts(screen, 0, 5, lives)
         key_inputs()
         update_portal_x()
-        collision()
         zombies()
         boss_1()
+        collision()
         bound()
         if start_jump:
             jumping()
